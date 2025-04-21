@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Observability Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Roboto:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-size: 12px;
+        }
+
+        .ibm-plex {
+            font-family: 'IBM Plex Sans', sans-serif;
+        }
+
+        .inter {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .menlo {
+            font-family: 'Menlo', monospace;
+        }
+
+        .roboto {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .ibm-plex-mono {
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .chart-placeholder {
+            background: linear-gradient(90deg, rgba(240, 240, 240, 1) 0%, rgba(224, 242, 254, 1) 100%);
+        }
+
+        .timeline-bar {
+            background-color: #36b9cc;
+            height: 20px;
+            margin: 2px 0;
+            border-radius: 2px;
+        }
+
+        .log-message {
+            max-height: 7.5em;
+            overflow-y: auto;
+            line-height: 1.3;
+            display: block;
+            position: relative;
+            width: 100%;
+            height: auto;
+            min-height: 1.3em;
+            white-space: pre-line;
+        }
+
+        .timestamp-col {
+            width: 180px;
+            min-width: 180px;
+        }
+
+        .level-col {
+            width: 100px;
+            min-width: 100px;
+        }
+
+        .service-col {
+            width: 120px;
+            min-width: 120px;
+        }
+
+        .message-col {
+            min-width: 200px;
+        }
+
+        .duration-col {
+            width: 80px;
+            min-width: 80px;
+        }
+
+        .tags-col {
+            width: 100px;
+            min-width: 100px;
+        }
+
+        .actions-col {
+            width: 70px;
+            min-width: 70px;
+        }
+
+        .time-series-chart {
+            width: 100%;
+            height: 140px;
+            position: relative;
+        }
+
+        .time-series-chart .grid-line {
+            stroke: #e5e7eb;
+            stroke-width: 1;
+        }
+
+        .time-series-chart .axis-label {
+            font-size: 10px;
+            fill: #6b7280;
+        }
+
+        .time-series-chart .line {
+            fill: none;
+            stroke: #0ea5e9;
+            stroke-width: 1.5;
+        }
+
+        .time-series-chart .time-label {
+            font-size: 11px;
+            fill: #6b7280;
+            text-anchor: middle;
+        }
+
+        .time-series-chart .value-label {
+            font-size: 11px;
+            fill: #6b7280;
+            text-anchor: end;
+            dominant-baseline: middle;
+        }
+
+        .table-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .table-header {
+            flex-shrink: 0;
+        }
+
+        .table-body {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .table-header table,
+        .table-body table {
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .table-header thead {
+            background-color: #f9fafb;
+        }
+
+        table th,
+        table td {
+            vertical-align: top;
+        }
+
+        tr.border-b {
+            border-color: #e5e7eb;
+        }
+
+        tr.hover\:bg-blue-50:hover {
+            background-color: #f0f7ff;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 1px 5px;
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            font-size: 10px;
+            margin-right: 2px;
+            margin-bottom: 2px;
+        }
+
+        .tag-production {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .tag-error {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .tag-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        #fontSelector {
+            padding-right: 36px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-position: right 10px center;
+            background-repeat: no-repeat;
+            background-size: 16px 16px;
+            text-align: left;
+            font-size: 12px;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            padding-left: 16px;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        #fontSizeSelector {
+            padding-right: 36px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-position: right 10px center;
+            background-repeat: no-repeat;
+            background-size: 16px 16px;
+            text-align: left;
+            font-size: 12px;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            padding-left: 16px;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            width: 90px;
+        }
+    </style>
+</head>
+
+<body class="ibm-plex bg-gray-50 h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 p-2 flex items-center justify-between">
+        <div class="flex items-center">
+            <div class="w-8 h-8 bg-gray-300 rounded"></div>
+            <span class="ml-2 font-semibold">Dashboard</span>
+        </div>
+        <div class="flex gap-4 items-center">
+            <select id="fontSelector" class="border border-gray-200">
+                <option value="ibm-plex">IBM Plex Sans</option>
+                <option value="inter">Inter</option>
+                <option value="menlo">Menlo</option>
+                <option value="roboto">Roboto</option>
+                <option value="ibm-plex-mono">IBM Plex Mono</option>
+            </select>
+            <select id="fontSizeSelector" class="border border-gray-200">
+                <option value="12" selected>12px</option>
+                <option value="14">14px</option>
+            </select>
+            <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-52 bg-white border-r border-gray-200 flex flex-col">
+            <div class="p-3 border-b border-gray-200">
+                <div class="flex items-center">
+                    <div class="w-5 h-5 bg-gray-300 rounded mr-2"></div>
+                    <span class="font-semibold">Search</span>
+                </div>
+            </div>
+
+            <nav class="flex-1 overflow-y-auto p-2">
+                <div class="mb-4">
+                    <div class="text-xs text-gray-500 mb-1 font-medium uppercase tracking-wider">Saved searches</div>
+                    <div class="pl-2">
+                        <div class="py-1 text-gray-800">All Events</div>
+                        <div class="py-1 text-gray-800">500 POST /checkout</div>
+                        <div class="py-1 text-gray-800">All Error Events</div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="text-xs text-gray-500 mb-1 font-medium uppercase tracking-wider">Services</div>
+                    <div class="pl-2">
+                        <div class="py-1 text-gray-800">Chart Explorer</div>
+                        <div class="py-1 text-gray-800">Client Sessions</div>
+                        <div class="py-1 text-gray-800 flex items-center">
+                            <span>Alerts</span>
+                            <span class="ml-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        </div>
+                        <div class="py-1 text-gray-800">Service Health</div>
+                        <div class="py-1 text-gray-800">Kubernetes</div>
+                        <div class="py-1 text-gray-800">Dashboards</div>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="p-3 border-t border-gray-200">
+                <div class="text-xs text-blue-500">Help</div>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="flex-1 overflow-hidden flex flex-col">
+            <!-- Filters & Controls -->
+            <div class="p-2 border-b border-gray-200 bg-white flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <div class="border rounded px-3 py-1 bg-gray-50 text-gray-600 flex-1 min-w-[200px]">
+                        (event_type:"log")</div>
+                    <button class="px-3 py-1 bg-green-100 text-green-800 rounded text-xs">Live Tail</button>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-gray-500">98 Results</span>
+                    <button class="px-2 py-1 text-xs border border-gray-300 rounded">Zoom Out</button>
+                    <button class="px-2 py-1 text-xs border border-gray-300 rounded">Zoom In</button>
+                </div>
+            </div>
+
+            <!-- Chart Area -->
+            <div class="h-40 p-4 bg-white border-b border-gray-200">
+                <!-- <div class="text-xs text-gray-500 mb-1">Event Count</div> -->
+                <div class="time-series-chart">
+                    <svg id="timeSeriesChart" width="100%" height="100%">
+                        <!-- SVG content will be generated by JavaScript -->
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Table Area -->
+            <div class="flex-1 overflow-hidden flex flex-col">
+                <div class="table-container h-full">
+                    <div class="table-header">
+                        <table class="w-full table-fixed">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th
+                                        class="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap timestamp-col">
+                                        Timestamp (Local)
+                                    </th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-600 level-col">Level</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-600 service-col">Service</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-600 message-col">Message</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-600 duration-col">Duration</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-600 tags-col">Tags</th>
+                                    <th class="px-3 py-2 text-left font-medium text-gray-600 actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="table-body">
+                        <table class="w-full table-fixed">
+                            <tbody>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:22:01.809 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">frontend</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Started container playwright</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">235ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:22:01.803 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">frontend</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Created container playwright</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:22:00.917 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Container image "demo-playwright:latest" already present on machine. Container will be reused for this deployment. Previous container hash: c8a94d3e22a1f09e4321d8201957ab3c07eef921cc0281ab091a848d38112b24. Container environment variables set: NODE_ENV=production, LOG_LEVEL=info, WORKER_CONCURRENCY=5, REQUEST_TIMEOUT=60000.</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">412ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                        <span class="tag">docker</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:21:40.741 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-yellow-600">warning</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Job was active longer than specified deadline. Job ID: job-20230421-12345, started at: 2023-04-21T12:20:40.741Z, deadline: 60s, actual runtime: 65.823s. The job exceeded its maximum allowed execution time and was terminated. Please investigate potential performance issues or increase the job timeout settings in the configuration file at /etc/service/config.yaml. Consider checking for resource contention, slow database queries, or external service availability.
+
+Previous attempts for this job:
+1. Attempt at 2023-04-21T12:19:40.741Z failed after 30s with error code ERR_RESOURCE_EXHAUSTED
+2. Attempt at 2023-04-21T12:20:10.741Z failed after 28s with error code ERR_CONNECTION_REFUSED
+
+Execution logs for this job:
+[2023-04-21T12:20:40.741Z] INFO: Starting job execution
+[2023-04-21T12:20:41.123Z] INFO: Connecting to database with connection pool size=5
+[2023-04-21T12:20:41.556Z] INFO: Initializing job worker threads (count=3)
+[2023-04-21T12:20:42.012Z] INFO: Processing data batch 1/10 (size=5000 records)
+[2023-04-21T12:20:58.347Z] INFO: Processing data batch 2/10 (size=5000 records)
+[2023-04-21T12:21:18.922Z] INFO: Processing data batch 3/10 (size=5000 records)
+[2023-04-21T12:21:38.544Z] WARN: Database query taking longer than expected (query_id=a82fc3)
+[2023-04-21T12:21:40.741Z] ERROR: Job exceeded maximum execution time
+
+Resource utilization:
+- CPU: 87% average, 92% peak
+- Memory: 1.2GB / 2GB limit
+- Network: 35MB/s ingress, 12MB/s egress
+- Disk I/O: 120MB/s read, 45MB/s write</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">65.823s</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-warning">timeout</span>
+                                        <span class="tag">job</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                        <button class="text-red-500 hover:text-red-700 text-xs">Retry</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:21:40.739 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-yellow-600">warning</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Job was active longer than specified deadline</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-warning">timeout</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:20:57.876 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-yellow-600">warning</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">frontend</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Back-off restarting failed container. Container "playwright-runner" failed with exit code 137 (OOM killed). This is attempt 3 of 5 before permanent failure. Increasing memory limit from 512Mi to 768Mi. Container startup command: /bin/sh -c 'node /app/server.js'. Stack trace from previous failure: Error: JavaScript heap out of memory at Object.spawnSync (node:child_process:1100:22) at /app/node_modules/playwright/lib/server/browserType.js:252:28 at runMicrotasks at processTicksAndRejections (node:internal/process/task_queues:96:5)
+
+Detailed failure analysis:
+The container was terminated by the OOM Killer due to memory pressure. This typically indicates that the Node.js process is allocating more memory than the container limit allows. Common causes include:
+
+1. Browser instances not being properly closed after test execution
+2. Memory leaks in test scripts or application code
+3. Insufficient container memory limits for browser automation workloads
+4. Large test artifacts being stored in memory
+
+Previous failures:
+- Attempt 1: Exit code 137 at 2023-04-21T12:18:32.123Z (memory: 512Mi)
+- Attempt 2: Exit code 137 at 2023-04-21T12:19:45.456Z (memory: 512Mi)
+
+Heap snapshot analysis:
+- Largest objects by retained size:
+  * Array instances: 212MB
+  * Browser contexts: 156MB
+  * Page objects: 98MB
+  * Screenshot buffers: 76MB
+
+Automatic remediation:
+- Increasing memory limit to 768Mi
+- Adding Node flags: --max-old-space-size=700
+- Adding GC hints with: --expose-gc
+
+Recommended actions:
+- Review browser instance lifecycle management
+- Check for memory leaks with heap profiling
+- Consider adding browser context reuse strategy
+- Implement explicit garbage collection checkpoints</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-error">oom</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:20:01.804 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Created container playwright</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:20:01.796 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Container image "demo-playwright:latest" already present on machine</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:19:40.779 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-yellow-600">warning</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Job was active longer than specified deadline</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-warning">timeout</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:19:28.618 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-blue-600">info</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Server is running on 3001</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:19:28.578 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-blue-600">info</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">⚠️ [@logger/node v0.4.0] started!</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:22:01.809 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">frontend</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Started container playwright</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">235ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:22:01.803 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">frontend</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Created container playwright</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:22:00.917 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Container image "demo-playwright:latest" already present on machine. Container will be reused for this deployment. Previous container hash: c8a94d3e22a1f09e4321d8201957ab3c07eef921cc0281ab091a848d38112b24. Container environment variables set: NODE_ENV=production, LOG_LEVEL=info, WORKER_CONCURRENCY=5, REQUEST_TIMEOUT=60000.</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">412ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                        <span class="tag">docker</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:22:01.809 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">frontend</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Started container playwright</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">235ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:22:01.803 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">frontend</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Created container playwright</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:22:00.917 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Container image "demo-playwright:latest" already present on machine. Container will be reused for this deployment. Previous container hash: c8a94d3e22a1f09e4321d8201957ab3c07eef921cc0281ab091a848d38112b24. Container environment variables set: NODE_ENV=production, LOG_LEVEL=info, WORKER_CONCURRENCY=5, REQUEST_TIMEOUT=60000.</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">412ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                        <span class="tag">docker</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:19:28.575 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-yellow-600">warn</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">⚠️ [@logger/node v0.4.0] Sending logs to https://logs.example.com/v1/logs with the following configuration: batch size=100, flush interval=5000ms, retry attempts=3, compression=gzip, metadata={ service_name: "api-service", environment: "production", region: "us-west-2", instance_id: "i-08f7d2a5c9b3e1a4d", container_id: "c8a94d3e22a1" }. Log shipping enabled with secure TLS 1.2+ connection. Performance impact estimated at <0.5% CPU overhead. Memory buffer size set to 50MB maximum. Logger configuration details:
+-------------------------------- 
+• Logger version: 0.4.0 (latest)
+• Protocol: HTTPS/1.1 with TLS 1.2+ 
+• Authentication: mTLS with certificate rotation 
+• Batching strategy: Size-based (100 events) or time-based (5000ms), whichever comes first 
+• Retry policy: Exponential backoff (initial=500ms, max=30s, jitter=0.3) with 3 attempts 
+• Circuit breaker: Threshold=5 failures, reset time=60s 
+• Buffer persistence: Memory-only with maximum size 50MB 
+• Message format: JSON with UTF-8 encoding 
+• Compression: gzip level 6 
+
+Metadata enrichment:
+-------------------- 
+• Host information: Added automatically 
+• Service name: "api-service"
+• Environment: "production" 
+• Region: "us-west-2" 
+• Instance ID: "i-08f7d2a5c9b3e1a4d"
+• Container ID: "c8a94d3e22a1" 
+• Kubernetes metadata: Namespace="default", pod="api-7b9c8d6f5-x2v1p", node="ip-10-0-14-38.ec2.internal"
+• Application metadata: Version="3.4.2", commit_hash="a7d3f9c", build_time="2023-04-21T08:15:20Z" 
+
+Performance considerations:
+--------------------------- 
+• CPU impact: <0.5% on average, <2% during flush operations 
+• Memory footprint: Base=12MB, dynamic up to 50MB buffer 
+• Network bandwidth: Avg=150KB/minute, Peak=1.2MB/minute 
+• Disk I/O: None (memory-only buffer) 
+
+For more information and configuration options, see: https://docs.example.com/logger-node/configuration</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                        <span class="tag">logs</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:19:28.058 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-blue-600">info</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">api</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">⚠️ [@logger/node v0.4.0] started!</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">158ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-gray-700 whitespace-nowrap timestamp-col">Apr 21 12:18:01.898 PM</td>
+                                    <td class="px-3 py-2 level-col"><span class="text-green-600">normal</span></td>
+                                    <td class="px-3 py-2 text-gray-700 service-col">frontend</td>
+                                    <td class="px-3 py-2 text-gray-700 log-message message-col">Started container playwright with runtime configuration: { cpuShares: 2, memoryLimitMB: 512, networkMode: "bridge", volumeMounts: ["/data:/app/data:rw", "/config:/app/config:ro"], healthCheck: { command: ["CMD", "curl", "-f", "http://localhost:3000/health"], interval: 30s, timeout: 10s, retries: 3, startPeriod: 60s }, logging: { driver: "json-file", options: { "max-size": "10m", "max-file": "3" }}, securityContext: { runAsUser: 1000, runAsGroup: 1000, readOnlyRootFilesystem: true, allowPrivilegeEscalation: false } }
+
+Container initialization details:
+--------------------------------
+Container ID: 32a7f691ca32eb4e201bc93811231fad332591283aa9e7b1d54af0e79d3703e2
+Image: playwright:latest (sha256:c8a94d3e22a1f09e4321d8201957ab3c07eef921cc0281ab091a848d38112b24)
+Host: ip-10-0-14-38.ec2.internal
+Network interfaces:
+  - eth0: 172.17.0.8/16 (bridge)
+  - lo: 127.0.0.1/8 (loopback)
+
+Resource allocation:
+-------------------
+CPU: 2 shares (approximately 0.2 cores on this host)
+Memory: 512MB hard limit
+Swap: 0MB (disabled)
+PIDs: Maximum 512 processes
+
+Storage mounts:
+--------------
+- /data → /app/data (read-write)
+- /config → /app/config (read-only)
+- /var/run/secrets → /run/secrets (read-only)
+
+Security profile:
+---------------
+User/Group: 1000:1000 (non-root)
+Capabilities: Minimal set (DROP ALL, ADD NET_BIND_SERVICE)
+AppArmor: runtime/default
+Seccomp: Default profile
+Read-only root filesystem: true
+Privilege escalation: false
+
+Runtime constraints:
+------------------
+Maximum runtime: 24h
+Auto-restart policy: always with exponential backoff
+Health check: HTTP GET on :3000/health every 30s
+OOM behavior: Restart with memory increase up to 768MB maximum</td>
+                                    <td class="px-3 py-2 text-gray-700 duration-col">325ms</td>
+                                    <td class="px-3 py-2 text-gray-700 tags-col">
+                                        <span class="tag tag-production">prod</span>
+                                        <span class="tag">container</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 actions-col">
+                                        <button class="text-blue-500 hover:text-blue-700 text-xs">View</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Font switcher
+        const fontSelector = document.getElementById('fontSelector');
+        fontSelector.addEventListener('change', function () {
+            document.body.className = this.value + ' bg-gray-50 h-screen flex flex-col';
+        });
+        
+        // Font size switcher
+        const fontSizeSelector = document.getElementById('fontSizeSelector');
+        fontSizeSelector.addEventListener('change', function () {
+            document.body.style.fontSize = this.value + 'px';
+        });
+
+        // Time-series chart generator
+        function generateTimeSeriesChart() {
+            // Chart dimensions and margins
+            const svg = document.getElementById('timeSeriesChart');
+            const width = svg.clientWidth;
+            const height = svg.clientHeight;
+            const margin = { top: 20, right: 20, bottom: 30, left: 40 };
+            const chartWidth = width - margin.left - margin.right;
+            const chartHeight = height - margin.top - margin.bottom;
+
+            // Generate random data that resembles the attached image
+            // 250 data points fluctuating between 100-300
+            const generateData = () => {
+                const times = [];
+                const values = [];
+
+                // Generate time labels every 5 minutes from 5:20am to 5:45am
+                const timeLabels = ['5:20am', '5:25am', '5:30am', '5:35am', '5:40am', '5:45am'];
+
+                // Generate data points
+                const numPoints = 150;
+                let baseValue = 180;
+
+                for (let i = 0; i < numPoints; i++) {
+                    // Calculate corresponding time
+                    const timeIndex = Math.floor(i / (numPoints / timeLabels.length));
+                    const time = i / (numPoints - 1);
+
+                    // Random fluctuation that resembles the attached image
+                    const fluctuation = Math.sin(i * 0.3) * 20 + (Math.random() - 0.5) * 60;
+                    const value = Math.max(100, Math.min(300, baseValue + fluctuation));
+
+                    times.push(time);
+                    values.push(value);
+
+                    // Adjust base value for next point to create a continuous line
+                    baseValue = baseValue + (Math.random() - 0.5) * 10;
+                    baseValue = Math.max(150, Math.min(220, baseValue));
+                }
+
+                return { times, values, timeLabels };
+            };
+
+            const data = generateData();
+
+            // Clear any existing content
+            svg.innerHTML = '';
+
+            // Add grid lines
+            const yGridValues = [0, 100, 200, 300];
+            yGridValues.forEach(value => {
+                const y = margin.top + chartHeight * (1 - value / 300);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', margin.left);
+                line.setAttribute('x2', margin.left + chartWidth);
+                line.setAttribute('y1', y);
+                line.setAttribute('y2', y);
+                line.setAttribute('class', 'grid-line');
+                svg.appendChild(line);
+
+                // Add y-axis labels
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', margin.left - 5);
+                label.setAttribute('y', y);
+                label.setAttribute('class', 'value-label');
+                label.textContent = value;
+                svg.appendChild(label);
+            });
+
+            // Add time axis labels
+            data.timeLabels.forEach((label, index) => {
+                const x = margin.left + (chartWidth * index / (data.timeLabels.length - 1));
+                const y = margin.top + chartHeight + 15;
+
+                const timeLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                timeLabel.setAttribute('x', x);
+                timeLabel.setAttribute('y', y);
+                timeLabel.setAttribute('class', 'time-label');
+                timeLabel.textContent = label;
+                svg.appendChild(timeLabel);
+            });
+
+            // Create the line path
+            let pathData = 'M ';
+
+            data.times.forEach((time, i) => {
+                const x = margin.left + chartWidth * time;
+                const y = margin.top + chartHeight * (1 - data.values[i] / 300);
+
+                if (i === 0) {
+                    pathData += `${x} ${y}`;
+                } else {
+                    pathData += ` L ${x} ${y}`;
+                }
+            });
+
+            const linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            linePath.setAttribute('d', pathData);
+            linePath.setAttribute('class', 'line');
+            svg.appendChild(linePath);
+        }
+
+        // Initialize the chart when the page loads
+        window.addEventListener('load', generateTimeSeriesChart);
+        window.addEventListener('resize', generateTimeSeriesChart);
+    </script>
+</body>
+
+</html>
